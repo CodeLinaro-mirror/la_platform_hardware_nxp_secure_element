@@ -32,6 +32,10 @@ namespace implementation {
 
 sp<V1_0::ISecureElementHalCallback> SecureElement::mCallbackV1_0 = nullptr;
 
+static void onLSCompleted(bool result, std::string reason, void* arg) {
+  ((SecureElement*)arg)->onStateChange(result, reason);
+}
+
 SecureElement::SecureElement()
     : mOpenedchannelCount(0),
       mOpenedChannels{false, false, false, false} {}
@@ -61,7 +65,7 @@ Return<void> SecureElement::init(
     return Void();
   }
 
-  LSCSTATUS lsStatus = LSC_doDownload(clientCallback);
+  LSCSTATUS lsStatus = LSC_doDownload(onLSCompleted, (void*)this);
   /*
    * LSC_doDownload returns LSCSTATUS_FAILED in case thread creation fails.
    * So return callback as false.
@@ -437,6 +441,11 @@ SecureElement::seHalDeInit() {
     }
   }
   return sestatus;
+}
+
+void SecureElement::onStateChange(bool result, std::string reason) {
+  ALOGD("%s: result: %d, reaon= %s", __func__, result, reason.c_str());
+  mCallbackV1_0->onStateChange(result);
 }
 
 }  // namespace implementation
